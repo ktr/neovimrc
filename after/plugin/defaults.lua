@@ -29,7 +29,7 @@ vim.keymap.set('n', '<F5>', ':cd %:p:h <Enter>:pwd <Enter>')
 vim.keymap.set('n', '<F6>', ':%s:[ \\t]\\+$::g <Enter> :noh <Enter>')
 
 -- toggle line numbers
-vim.keymap.set('n', '<F7>', 'set number!<Enter>')
+-- vim.keymap.set('n', '<F7>', 'set number!<Enter>')
 
 -- copy current line to clipboard
 vim.keymap.set('n', '<F9>', '"*yy')
@@ -73,7 +73,7 @@ vim.o.mouse = ''
 vim.o.softtabstop = 2
 vim.o.shiftwidth = 2
 vim.o.expandtab = true
-vim.o.textwidth = 100
+vim.o.textwidth = 84
 
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "vim,html,jinja,svelte",
@@ -132,3 +132,30 @@ require("toggleterm").setup {
     end
   },
 }
+
+vim.keymap.set('n', '<F7>', function()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local input = table.concat(lines, '\n')
+
+  vim.system({ 'sqlfmt' }, { stdin = input, text = true }, function(res)
+    vim.schedule(function()
+      if res.code ~= 0 then
+        vim.notify('SQL formatter failed: ' .. (res.stderr or ''), vim.log.levels.ERROR)
+        return
+      end
+
+      if not res.stdout or res.stdout == '' then
+        return
+      end
+
+      local formatted = vim.split(res.stdout, '\n', { plain = true })
+      -- vim.split produces a trailing empty string if stdout ends with '\n'
+      if formatted[#formatted] == '' then
+        table.remove(formatted, #formatted)
+      end
+
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, formatted)
+    end)
+  end)
+end, { desc = 'Format buffer with Rust SQL tool' })

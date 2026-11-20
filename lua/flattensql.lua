@@ -1,4 +1,3 @@
-
 local M = {}
 
 function M.flatten_sql()
